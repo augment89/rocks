@@ -1,0 +1,204 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مشهد جبال السعودية مع شعار صخور</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            direction: rtl;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>جبال السعودية ليلاً</h1>
+        <p>مشهد ثلاثي الأبعاد يحاكي الجبال الواقعية، النجوم المضيئة، القمر، وشعار مؤسسة صخور</p>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // إعداد المشهد
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // إضافة ضبابية ليلية
+        scene.fog = new THREE.FogExp2(0x0a0a1e, 0.005);
+
+        // إنشاء النجوم المضيئة
+        const starGeometry = new THREE.BufferGeometry();
+        const starVertices = [];
+        const starSprites = [];
+        for (let i = 0; i < 5000; i++) {
+            const x = (Math.random() - 0.5) * 2000;
+            const y = Math.random() * 500;
+            const z = (Math.random() - 0.5) * 2000;
+            starVertices.push(x, y, z);
+
+            const sprite = new THREE.Sprite(
+                new THREE.SpriteMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.7 + Math.random() * 0.3,
+                    blending: THREE.AdditiveBlending,
+                })
+            );
+            sprite.position.set(x, y, z);
+            sprite.scale.set(0.5, 0.5, 0.5);
+            starSprites.push(sprite);
+            scene.add(sprite);
+        }
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+
+        // إنشاء القمر
+        const moonGeometry = new THREE.SphereGeometry(3, 32, 32);
+        const moonMaterial = new THREE.MeshPhongMaterial({
+            color: 0xdddddd,
+            shininess: 10,
+            emissive: 0xaaaaaa,
+            emissiveIntensity: 0.2,
+        });
+        const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+        moon.position.set(20, 50, -100);
+        scene.add(moon);
+
+        // إنشاء شعار مؤسسة صخور
+        const logoMaterial = new THREE.SpriteMaterial({
+            map: new THREE.TextureLoader().load('https://www2.0zz0.com/2025/07/22/15/480195410.jpg'),
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            opacity: 0.9,
+        });
+        const logoSprite = new THREE.Sprite(logoMaterial);
+        logoSprite.position.set(-20, 40, -80);
+        logoSprite.scale.set(10, 10, 1); // تعديل الحجم حسب الحاجة
+        scene.add(logoSprite);
+
+        // إنشاء الجبال
+        const terrainGeometry = new THREE.PlaneGeometry(200, 200, 128, 128); // زيادة الكثافة للواقعية
+        const terrainMaterial = new THREE.MeshPhongMaterial({
+            color: 0x4a3727, // لون بني محمر
+            shininess: 5,
+            flatShading: false,
+            // يمكن إضافة نسيج للصخور هنا إذا توفرت صورة
+            map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/terrain/rock.jpg'), // نسيج صخري
+            normalMap: new THREE.TextureLoader().load('https://threejs.org/examples/textures/terrain/rock-normal.jpg'), // خريطة طبيعية
+        });
+        const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+        terrain.rotation.x = -Math.PI / 2;
+        terrain.position.y = -20;
+
+        // تحسين التضاريس باستخدام heightmap
+        const vertices = terrainGeometry.attributes.position.array;
+        for (let i = 0; i < vertices.length; i += 3) {
+            const x = vertices[i];
+            const y = vertices[i + 1];
+            const noise = (Math.sin(x * 0.05) + Math.cos(y * 0.05)) * 8 + Math.random() * 4;
+            vertices[i + 2] = noise + (Math.abs(noise) * 0.5); // تضاريس وعرة أكثر
+        }
+        terrainGeometry.attributes.position.needsUpdate = true;
+        terrainGeometry.computeVertexNormals();
+        scene.add(terrain);
+
+        // إضافة إضاءة القمر
+        const moonLight = new THREE.PointLight(0xaaaaaa, 0.8, 200);
+        moonLight.position.set(20, 50, -100);
+        scene.add(moonLight);
+        const ambientLight = new THREE.AmbientLight(0x0a0a1e, 0.3);
+        scene.add(ambientLight);
+
+        // تحديث الكاميرا
+        camera.position.set(0, 30, 60);
+        camera.lookAt(0, 0, 0);
+
+        // التحريك
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // تحريك النجوم
+            starSprites.forEach(sprite => {
+                sprite.material.opacity = 0.7 + Math.sin(Date.now() * 0.001 + sprite.position.x) * 0.2; // تأثير توهج
+            });
+
+            // تحريك القمر
+            moon.position.x = 20 * Math.cos(Date.now() * 0.0001);
+            moon.position.z = -100 + 20 * Math.sin(Date.now() * 0.0001);
+            moonLight.position.copy(moon.position);
+
+            // تحريك الشعار
+            logoSprite.position.y = 40 + Math.sin(Date.now() * 0.0005) * 2; // حركة خفيفة رأسية
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // التعامل مع تغيير حجم النافذة
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
